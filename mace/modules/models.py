@@ -10,6 +10,7 @@ import numpy as np
 import torch
 from e3nn import o3
 from e3nn.util.jit import compile_mode
+from torch_scatter import scatter
 
 from mace.data import AtomicData
 from mace.modules.radial import ZBLBasis
@@ -200,9 +201,11 @@ class MACE(torch.nn.Module):
 
         # Atomic energies
         node_e0 = self.atomic_energies_fn(data["node_attrs"])
-        e0 = scatter_sum(
-            src=node_e0, index=data["batch"], dim=-1, dim_size=num_graphs
-        )  # [n_graphs,]
+        # print(node_e0.shape)
+        # e0 = scatter_sum(
+        #     src=node_e0, index=data["batch"], dim=-1, dim_size=num_graphs
+        # )  # [n_graphs,]
+        e0 = scatter(node_e0, data['batch'])
         # Embeddings
         node_feats = self.node_embedding(data["node_attrs"])
         vectors, lengths = get_edge_vectors_and_lengths(
@@ -246,9 +249,10 @@ class MACE(torch.nn.Module):
             )
             node_feats_list.append(node_feats)
             node_energies = readout(node_feats).squeeze(-1)  # [n_nodes, ]
-            energy = scatter_sum(
-                src=node_energies, index=data["batch"], dim=-1, dim_size=num_graphs
-            )  # [n_graphs,]
+            # energy = scatter_sum(
+            #     src=node_energies, index=data["batch"], dim=-1, dim_size=num_graphs
+            # )  # [n_graphs,]
+            energy = scatter(node_energies, data["batch"])
             energies.append(energy)
             node_energies_list.append(node_energies)
 
